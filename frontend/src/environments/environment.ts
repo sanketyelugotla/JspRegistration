@@ -1,6 +1,6 @@
 const backendBaseUrl =
-    (import.meta.env.NG_APP_BACKEND_URL as string | undefined) ||
-    (import.meta.env.VITE_BACKEND_URL as string | undefined) ||
+    (import.meta.env?.NG_APP_BACKEND_URL as string | undefined) ||
+    (import.meta.env?.VITE_BACKEND_URL as string | undefined) ||
     'https://jspregistration.onrender.com';
 const normalizedBackendBaseUrl = backendBaseUrl.replace(/\/$/, '');
 
