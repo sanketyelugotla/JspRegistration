@@ -1,0 +1,147 @@
+<div class="max-w-5xl mx-auto py-8 px-4">
+  <div class="bg-white rounded-lg shadow p-6 space-y-6">
+    <div class="flex items-center justify-between">
+      <h1 class="text-2xl font-bold text-gray-900">Application Details</h1>
+      <button
+        type="button"
+        class="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+        (click)="goBack()"
+      >
+        Back
+      </button>
+    </div>
+
+    @if (loading()) {
+      <div class="text-center text-gray-600 py-8">Loading application...</div>
+    } @else if (errorMessage()) {
+      <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+        {{ errorMessage() }}
+      </div>
+    } @else if (application()) {
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+        <div><span class="font-semibold">JSP ID:</span> {{ application()!.jspId }}</div>
+        <div><span class="font-semibold">Status:</span> {{ statusLabel(application()!.status) }}</div>
+        <div><span class="font-semibold">Full Name:</span> {{ application()!.fullName }}</div>
+        <div><span class="font-semibold">Phone:</span> {{ application()!.applicantPhone }}</div>
+        <div><span class="font-semibold">District:</span> {{ application()!.district?.name || '-' }}</div>
+        <div><span class="font-semibold">Constituency:</span> {{ application()!.constituency?.name || '-' }}</div>
+        <div><span class="font-semibold">Mandal:</span> {{ application()!.mandal?.name || '-' }}</div>
+        <div><span class="font-semibold">Village/Ward:</span> {{ application()!.villageWard }}</div>
+        <div><span class="font-semibold">Polling Booth:</span> {{ application()!.pollingBooth }}</div>
+        <div><span class="font-semibold">Current Level:</span> {{ application()!.currentLevel || '-' }}</div>
+      </div>
+
+      <div>
+        <h2 class="text-lg font-semibold text-gray-900 mb-2">Short Description</h2>
+        <p class="text-gray-700 bg-gray-50 p-3 rounded-lg">{{ application()!.shortDescription || 'No description provided' }}</p>
+      </div>
+
+      <div>
+        <h2 class="text-lg font-semibold text-gray-900 mb-2">Role Preferences</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+          <div><span class="font-semibold">First Preference:</span> {{ application()!.rolePreference?.preferredRole1?.name || '-' }}</div>
+          <div><span class="font-semibold">Second Preference:</span> {{ application()!.rolePreference?.preferredRole2?.name || '-' }}</div>
+          <div><span class="font-semibold">Third Preference:</span> {{ application()!.rolePreference?.preferredRole3?.name || '-' }}</div>
+          <div><span class="font-semibold">Flexibility Agreed:</span> {{ application()!.rolePreference?.flexibilityAgreed ? 'Yes' : 'No' }}</div>
+        </div>
+      </div>
+
+      <div>
+        <h2 class="text-lg font-semibold text-gray-900 mb-2">Documents</h2>
+        @if (!application()!.documents || application()!.documents!.length === 0) {
+          <p class="text-gray-600">No documents uploaded.</p>
+        } @else {
+          <div class="space-y-2">
+            @for (doc of application()!.documents!; track doc.id) {
+              <div class="flex items-center justify-between border rounded-lg px-3 py-2">
+                <div>
+                  <div class="font-medium text-gray-900">{{ doc.originalFilename }}</div>
+                  <div class="text-xs text-gray-600">{{ doc.documentType }}</div>
+                </div>
+                <div class="flex gap-2">
+                  <button
+                    type="button"
+                    class="px-3 py-1.5 text-sm rounded border border-gray-300 text-gray-700 hover:bg-gray-50"
+                    (click)="viewDocument(doc)"
+                  >
+                    View
+                  </button>
+                  <button
+                    type="button"
+                    class="px-3 py-1.5 text-sm rounded bg-blue-600 text-white hover:bg-blue-700"
+                    (click)="downloadDocument(doc)"
+                  >
+                    Download
+                  </button>
+                </div>
+              </div>
+            }
+          </div>
+        }
+      </div>
+
+      <div>
+        <h2 class="text-lg font-semibold text-gray-900 mb-2">Approval History</h2>
+        @if (!application()!.approvalHistory || application()!.approvalHistory!.length === 0) {
+          <p class="text-gray-600">No approval actions yet.</p>
+        } @else {
+          <div class="space-y-2">
+            @for (entry of application()!.approvalHistory!; track entry.id) {
+              <div class="border rounded-lg p-3 text-sm">
+                <div class="font-medium text-gray-900">{{ entry.role }} - {{ entry.action }}</div>
+                <div class="text-gray-700">{{ entry.previousStatus }} -> {{ entry.newStatus }}</div>
+                <div class="text-xs text-gray-500">{{ entry.createdAt | date:'medium' }}</div>
+                @if (entry.remarks) {
+                  <div class="text-gray-700 mt-1">Remarks: {{ entry.remarks }}</div>
+                }
+              </div>
+            }
+          </div>
+        }
+      </div>
+
+      @if (canTakeReviewAction()) {
+        <div class="pt-4 border-t">
+          <label for="remarks" class="block text-sm font-semibold text-gray-900 mb-2">Remarks (optional)</label>
+          <textarea
+            id="remarks"
+            rows="3"
+            class="w-full mb-4 border border-gray-300 rounded-lg px-3 py-2 text-sm"
+            placeholder="Add comments for approval, rejection, or correction request"
+            [value]="remarks()"
+            (input)="updateRemarks($any($event.target).value)"
+          ></textarea>
+
+          <div class="flex flex-wrap gap-3">
+          <button
+            type="button"
+            class="px-5 py-2.5 rounded-lg bg-green-600 text-white font-semibold hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            [disabled]="actionLoading()"
+            (click)="approveApplication()"
+          >
+            {{ actionLoading() ? 'Processing...' : 'Approve & Move To Next Phase' }}
+          </button>
+
+          <button
+            type="button"
+            class="px-5 py-2.5 rounded-lg bg-amber-600 text-white font-semibold hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            [disabled]="actionLoading()"
+            (click)="requestCorrectionApplication()"
+          >
+            Request Correction
+          </button>
+
+          <button
+            type="button"
+            class="px-5 py-2.5 rounded-lg bg-red-600 text-white font-semibold hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            [disabled]="actionLoading()"
+            (click)="rejectApplication()"
+          >
+            Reject
+          </button>
+          </div>
+        </div>
+      }
+    }
+  </div>
+</div>

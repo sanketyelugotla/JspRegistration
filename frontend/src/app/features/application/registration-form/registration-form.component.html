@@ -1,0 +1,334 @@
+<div class="max-w-4xl mx-auto py-8 px-4">
+  <div class="bg-white rounded-lg shadow-lg p-8">
+    <div class="mb-8">
+      <h1 class="text-3xl font-bold text-gray-900">JSP Party Role Registration</h1>
+      <p class="text-gray-600 mt-2">Jana Sena Party - Submit your role preference application</p>
+      
+      @if (applicationService.isSaving()) {
+        <p class="text-sm text-blue-600 mt-4">💾 Auto-saving...</p>
+      }
+      @if (applicationService.lastSaved()) {
+        <p class="text-sm text-green-600 mt-4">
+          ✓ Last saved: {{ formatTime(applicationService.lastSaved()!) }}
+        </p>
+      }
+    </div>
+
+    <form [formGroup]="registrationForm" (ngSubmit)="onSubmit()" class="space-y-8">
+      
+      <!-- Section 1: Personal Details -->
+      <div class="section">
+        <h2 class="section-title">1. Personal Details</h2>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <!-- Phone (Pre-filled) -->
+          <div>
+            <label class="label">Phone Number</label>
+            <input
+              type="tel"
+              formControlName="phone"
+              readonly
+              class="input bg-gray-100 cursor-not-allowed"
+            />
+          </div>
+
+          <!-- JSP ID -->
+          <div>
+            <label class="label">JSP ID <span class="text-red-500">*</span></label>
+            <input
+              type="text"
+              formControlName="jspId"
+              placeholder="Enter your JSP ID"
+              class="input"
+              [class.border-red-500]="isFieldInvalid('jspId')"
+            />
+            @if (isFieldInvalid('jspId')) {
+              <p class="error-text">JSP ID is required</p>
+            }
+          </div>
+
+          <!-- Full Name -->
+          <div class="md:col-span-2">
+            <label class="label">Full Name <span class="text-red-500">*</span></label>
+            <input
+              type="text"
+              formControlName="fullName"
+              placeholder="Enter your full name"
+              class="input"
+              [class.border-red-500]="isFieldInvalid('fullName')"
+            />
+            @if (isFieldInvalid('fullName')) {
+              <p class="error-text">Full name is required</p>
+            }
+          </div>
+
+          <!-- District -->
+          <div>
+            <label class="label">District <span class="text-red-500">*</span></label>
+            <select
+              formControlName="districtId"
+              (change)="onDistrictChange()"
+              class="input"
+              [class.border-red-500]="isFieldInvalid('districtId')"
+            >
+              <option value="">Select District</option>
+              @for (district of districts(); track district.id) {
+                <option [value]="district.id">{{ district.name }}</option>
+              }
+            </select>
+            @if (isFieldInvalid('districtId')) {
+              <p class="error-text">District is required</p>
+            }
+          </div>
+
+          <!-- Constituency -->
+          <div>
+            <label class="label">Constituency <span class="text-red-500">*</span></label>
+            <select
+              formControlName="constituencyId"
+              (change)="onConstituencyChange()"
+              [disabled]="!registrationForm.get('districtId')?.value"
+              class="input"
+              [class.border-red-500]="isFieldInvalid('constituencyId')"
+            >
+              <option value="">Select Constituency</option>
+              @for (constituency of constituencies(); track constituency.id) {
+                <option [value]="constituency.id">{{ constituency.name }}</option>
+              }
+            </select>
+            @if (isFieldInvalid('constituencyId')) {
+              <p class="error-text">Constituency is required</p>
+            }
+          </div>
+
+          <!-- Mandal -->
+          <div>
+            <label class="label">Mandal <span class="text-red-500">*</span></label>
+            <select
+              formControlName="mandalId"
+              [disabled]="!registrationForm.get('constituencyId')?.value"
+              class="input"
+              [class.border-red-500]="isFieldInvalid('mandalId')"
+            >
+              <option value="">Select Mandal</option>
+              @for (mandal of mandals(); track mandal.id) {
+                <option [value]="mandal.id">{{ mandal.name }}</option>
+              }
+            </select>
+            @if (isFieldInvalid('mandalId')) {
+              <p class="error-text">Mandal is required</p>
+            }
+          </div>
+
+          <!-- Village/Ward -->
+          <div>
+            <label class="label">Village/Ward <span class="text-red-500">*</span></label>
+            <input
+              type="text"
+              formControlName="villageWard"
+              placeholder="Enter village or ward"
+              class="input"
+              [class.border-red-500]="isFieldInvalid('villageWard')"
+            />
+            @if (isFieldInvalid('villageWard')) {
+              <p class="error-text">Village/Ward is required</p>
+            }
+          </div>
+
+          <!-- Polling Booth -->
+          <div class="md:col-span-2">
+            <label class="label">Polling Booth <span class="text-red-500">*</span></label>
+            <input
+              type="text"
+              formControlName="pollingBooth"
+              placeholder="Enter polling booth name/number"
+              class="input"
+              [class.border-red-500]="isFieldInvalid('pollingBooth')"
+            />
+            @if (isFieldInvalid('pollingBooth')) {
+              <p class="error-text">Polling booth is required</p>
+            }
+          </div>
+        </div>
+      </div>
+
+          <!-- Section 2: Additional Information -->
+      <div class="section">
+        <h2 class="section-title">2. Additional Information</h2>
+        
+        <!-- Short Description -->
+        <div class="mb-6">
+          <label class="label">Short Description</label>
+          <textarea
+            formControlName="shortDescription"
+            rows="4"
+            placeholder="Tell us about yourself and why you want to join JSP..."
+            class="input"
+          ></textarea>
+        </div>
+
+        <!-- Bio Data Upload -->
+        <div class="mb-6">
+          <label class="label">Bio Data Document <span class="text-red-500">*</span></label>
+          <p class="text-sm text-gray-600 mb-2">Upload your bio data (PDF format recommended)</p>
+          <app-file-upload
+            [multiple]="false"
+            (filesChanged)="onBioDataChange($event)"
+          />
+          @if (bioDataFile) {
+            <p class="text-sm text-green-600 mt-2 font-medium">✅ Uploaded: {{ bioDataFile.name }}</p>
+          } @else {
+            <p class="text-sm text-red-500 mt-2">* Required for submission</p>
+          }
+        </div>
+
+        <!-- Supporting Documents -->
+        <div>
+          <label class="label">Supporting Documents</label>
+          <p class="text-sm text-gray-600 mb-2">Upload any additional supporting documents (optional)</p>
+          <app-file-upload
+            [multiple]="true"
+            (filesChanged)="onSupportingDocsChange($event)"
+          />
+          @if (supportingDocFiles.length > 0) {
+            <p class="text-sm text-green-600 mt-2 font-medium">✅ {{ supportingDocFiles.length }} file(s) uploaded</p>
+          }
+        </div>
+      </div>
+
+      <!-- Section 3: Role Preferences -->
+      <div class="section">
+        <h2 class="section-title">3. Role Preferences</h2>
+        
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <!-- First Preference -->
+          <div>
+            <label class="label">First Preference <span class="text-red-500">*</span></label>
+            <select
+              formControlName="firstPreference"
+              class="input"
+              [class.border-red-500]="isFieldInvalid('firstPreference')"
+            >
+              <option value="">Select Role</option>
+              @for (role of partyRoles(); track role.id) {
+                <option [value]="role.id">{{ role.name }}</option>
+              }
+            </select>
+            @if (isFieldInvalid('firstPreference')) {
+              <p class="error-text">Required</p>
+            }
+          </div>
+
+          <!-- Second Preference -->
+          <div>
+            <label class="label">Second Preference <span class="text-red-500">*</span></label>
+            <select
+              formControlName="secondPreference"
+              class="input"
+              [class.border-red-500]="isFieldInvalid('secondPreference')"
+            >
+              <option value="">Select Role</option>
+              @for (role of partyRoles(); track role.id) {
+                <option 
+                  [value]="role.id"
+                  [disabled]="role.id === registrationForm.get('firstPreference')?.value"
+                >
+                  {{ role.name }}
+                </option>
+              }
+            </select>
+            @if (isFieldInvalid('secondPreference')) {
+              <p class="error-text">Required</p>
+            }
+          </div>
+
+          <!-- Third Preference -->
+          <div>
+            <label class="label">Third Preference <span class="text-red-500">*</span></label>
+            <select
+              formControlName="thirdPreference"
+              class="input"
+              [class.border-red-500]="isFieldInvalid('thirdPreference')"
+            >
+              <option value="">Select Role</option>
+              @for (role of partyRoles(); track role.id) {
+                <option 
+                  [value]="role.id"
+                  [disabled]="role.id === registrationForm.get('firstPreference')?.value || 
+                             role.id === registrationForm.get('secondPreference')?.value"
+                >
+                  {{ role.name }}
+                </option>
+              }
+            </select>
+            @if (isFieldInvalid('thirdPreference')) {
+              <p class="error-text">Required</p>
+            }
+          </div>
+
+          <!-- Flexibility -->
+          <div class="md:col-span-3">
+            <div class="flex items-start space-x-3 p-4 bg-blue-50 rounded-lg border border-blue-200">
+              <input
+                type="checkbox"
+                id="flexibility"
+                formControlName="flexibility"
+                class="mt-1 h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded cursor-pointer"
+              />
+              <label for="flexibility" class="text-sm text-gray-700 cursor-pointer">
+                <span class="font-semibold text-red-500">* Required:</span> I agree to be flexible with role assignment. The party may assign me a different role based on organizational needs.
+              </label>
+            </div>
+            @if (isFieldInvalid('flexibility')) {
+              <p class="error-text mt-2">You must agree to flexibility to submit the application</p>
+            }
+          </div>
+        </div>
+      </div>
+
+      <!-- Error Message -->
+      @if (errorMessage()) {
+        <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+          {{ errorMessage() }}
+        </div>
+      }
+
+      <!-- Action Buttons -->
+      <div class="flex items-center justify-between pt-6 border-t">
+        <button
+          type="button"
+          class="btn-secondary"
+          disabled
+          title="Upgrade feature coming soon"
+        >
+          ⬆️ Upgrade
+        </button>
+
+        <div class="space-x-4">
+          <button
+            type="button"
+            (click)="saveDraft()"
+            [disabled]="submitting()"
+            class="btn-secondary"
+          >
+            💾 Save Draft
+          </button>
+
+          <button
+            type="submit"
+            [disabled]="!canSubmit() || submitting()"
+            class="btn-primary"
+            [class.opacity-50]="!canSubmit()"
+            [class.cursor-not-allowed]="!canSubmit()"
+          >
+            @if (submitting()) {
+              <span>Submitting...</span>
+            } @else {
+              <span>Submit Application →</span>
+            }
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>

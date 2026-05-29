@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>JSP API Test</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 1200px;
+        margin: 20px auto;
+        padding: 20px;
+        background: #f5f5f5;
+      }
+      .test-section {
+        background: white;
+        padding: 20px;
+        margin-bottom: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+      button {
+        background: #3b82f6;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 4px;
+        cursor: pointer;
+        margin-right: 10px;
+      }
+      button:hover {
+        background: #2563eb;
+      }
+      .result {
+        background: #f3f4f6;
+        padding: 15px;
+        margin-top: 10px;
+        border-radius: 4px;
+        white-space: pre-wrap;
+        font-family: "Courier New", monospace;
+        font-size: 12px;
+        max-height: 400px;
+        overflow-y: auto;
+      }
+      .success {
+        color: #10b981;
+        font-weight: bold;
+      }
+      .error {
+        color: #ef4444;
+        font-weight: bold;
+      }
+      h1 {
+        color: #111827;
+      }
+      h2 {
+        color: #374151;
+      }
+      select {
+        padding: 8px;
+        border-radius: 4px;
+        border: 1px solid #d1d5db;
+        margin-right: 10px;
+        min-width: 200px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>🧪 JSP Backend API Test Page</h1>
+    <p>
+      This page tests the backend API endpoints without Angular to isolate any
+      issues.
+    </p>
+
+    <div class="test-section">
+      <h2>1. Test Districts API</h2>
+      <button onclick="testDistricts()">Load Districts</button>
+      <div id="districts-result" class="result"></div>
+    </div>
+
+    <div class="test-section">
+      <h2>2. Test Constituencies API</h2>
+      <select id="district-select">
+        <option value="">Select a district first</option>
+      </select>
+      <button onclick="testConstituencies()">Load Constituencies</button>
+      <div id="constituencies-result" class="result"></div>
+    </div>
+
+    <div class="test-section">
+      <h2>3. Test Mandals API</h2>
+      <select id="constituency-select">
+        <option value="">Select a constituency first</option>
+      </select>
+      <button onclick="testMandals()">Load Mandals</button>
+      <div id="mandals-result" class="result"></div>
+    </div>
+
+    <div class="test-section">
+      <h2>4. Test Party Roles API</h2>
+      <button onclick="testPartyRoles()">Load Party Roles</button>
+      <div id="roles-result" class="result"></div>
+    </div>
+
+    <script>
+      const API_BASE = "http://localhost:3000/api";
+
+      let districts = [];
+      let constituencies = [];
+
+      async function testDistricts() {
+        const resultDiv = document.getElementById("districts-result");
+        resultDiv.innerHTML = "Loading...";
+
+        try {
+          console.log(
+            "🔍 Fetching districts from:",
+            `${API_BASE}/locations/districts`,
+          );
+          const response = await fetch(`${API_BASE}/locations/districts`);
+          console.log("📡 Response status:", response.status);
+
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+
+          const data = await response.json();
+          console.log("✅ Districts data:", data);
+
+          districts = data.data || [];
+
+          // Populate district dropdown
+          const select = document.getElementById("district-select");
+          select.innerHTML = '<option value="">Select District</option>';
+          districts.forEach((district) => {
+            const option = document.createElement("option");
+            option.value = district.id;
+            option.textContent = district.name;
+            select.appendChild(option);
+          });
+
+          resultDiv.innerHTML =
+            `<span class="success">✅ SUCCESS</span>\n\n` +
+            `Total Districts: ${districts.length}\n\n` +
+            JSON.stringify(data, null, 2);
+        } catch (error) {
+          console.error("❌ Error:", error);
+          resultDiv.innerHTML =
+            `<span class="error">❌ ERROR</span>\n\n${error.message}\n\n` +
+            `Check:\n` +
+            `1. Is backend running on port 3000?\n` +
+            `2. Is CORS configured correctly?\n` +
+            `3. Is database seeded?\n\n` +
+            `Try manually: ${API_BASE}/locations/districts`;
+        }
+      }
+
+      async function testConstituencies() {
+        const resultDiv = document.getElementById("constituencies-result");
+        const districtId = document.getElementById("district-select").value;
+
+        if (!districtId) {
+          resultDiv.innerHTML =
+            '<span class="error">⚠️ Please select a district first</span>';
+          return;
+        }
+
+        resultDiv.innerHTML = "Loading...";
+
+        try {
+          const url = `${API_BASE}/locations/constituencies?districtId=${districtId}`;
+          console.log("🔍 Fetching constituencies from:", url);
+          const response = await fetch(url);
+          console.log("📡 Response status:", response.status);
+
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+
+          const data = await response.json();
+          console.log("✅ Constituencies data:", data);
+
+          constituencies = data.data || [];
+
+          // Populate constituency dropdown
+          const select = document.getElementById("constituency-select");
+          select.innerHTML = '<option value="">Select Constituency</option>';
+          constituencies.forEach((constituency) => {
+            const option = document.createElement("option");
+            option.value = constituency.id;
+            option.textContent = constituency.name;
+            select.appendChild(option);
+          });
+
+          resultDiv.innerHTML =
+            `<span class="success">✅ SUCCESS</span>\n\n` +
+            `Total Constituencies: ${constituencies.length}\n\n` +
+            `Names: ${constituencies.map((c) => c.name).join(", ")}\n\n` +
+            JSON.stringify(data, null, 2);
+        } catch (error) {
+          console.error("❌ Error:", error);
+          resultDiv.innerHTML = `<span class="error">❌ ERROR</span>\n\n${error.message}`;
+        }
+      }
+
+      async function testMandals() {
+        const resultDiv = document.getElementById("mandals-result");
+        const constituencyId = document.getElementById(
+          "constituency-select",
+        ).value;
+
+        if (!constituencyId) {
+          resultDiv.innerHTML =
+            '<span class="error">⚠️ Please select a constituency first</span>';
+          return;
+        }
+
+        resultDiv.innerHTML = "Loading...";
+
+        try {
+          const url = `${API_BASE}/locations/mandals?constituencyId=${constituencyId}`;
+          console.log("🔍 Fetching mandals from:", url);
+          const response = await fetch(url);
+          console.log("📡 Response status:", response.status);
+
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+
+          const data = await response.json();
+          console.log("✅ Mandals data:", data);
+
+          const mandals = data.data || [];
+
+          resultDiv.innerHTML =
+            `<span class="success">✅ SUCCESS</span>\n\n` +
+            `Total Mandals: ${mandals.length}\n\n` +
+            `Names: ${mandals.map((m) => m.name).join(", ")}\n\n` +
+            JSON.stringify(data, null, 2);
+        } catch (error) {
+          console.error("❌ Error:", error);
+          resultDiv.innerHTML = `<span class="error">❌ ERROR</span>\n\n${error.message}`;
+        }
+      }
+
+      async function testPartyRoles() {
+        const resultDiv = document.getElementById("roles-result");
+        resultDiv.innerHTML = "Loading...";
+
+        try {
+          console.log(
+            "🔍 Fetching party roles from:",
+            `${API_BASE}/party-roles`,
+          );
+          const response = await fetch(`${API_BASE}/party-roles`);
+          console.log("📡 Response status:", response.status);
+
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+
+          const data = await response.json();
+          console.log("✅ Party roles data:", data);
+
+          const roles = data.data || [];
+
+          resultDiv.innerHTML =
+            `<span class="success">✅ SUCCESS</span>\n\n` +
+            `Total Roles: ${roles.length}\n\n` +
+            `Names: ${roles.map((r) => r.name).join(", ")}\n\n` +
+            JSON.stringify(data, null, 2);
+        } catch (error) {
+          console.error("❌ Error:", error);
+          resultDiv.innerHTML = `<span class="error">❌ ERROR</span>\n\n${error.message}`;
+        }
+      }
+
+      // Auto-load districts on page load
+      window.addEventListener("load", () => {
+        console.log("🚀 API Test Page Loaded");
+        console.log("💡 Open DevTools Console (F12) to see detailed logs");
+        testDistricts();
+        testPartyRoles();
+      });
+    </script>
+  </body>
+</html>

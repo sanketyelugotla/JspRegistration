@@ -1,0 +1,35 @@
+@if (loadingService.loading()) {
+  <app-loading-spinner />
+}
+
+<div class="min-h-screen bg-gray-100">
+  <!-- Header -->
+  <header class="bg-white shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex justify-between items-center h-16">
+        <div class="flex items-center">
+          <h1 class="text-xl font-bold text-gray-900">JSP Registration</h1>
+        </div>
+        <div class="flex items-center space-x-4">
+          @if (authService.user(); as user) {
+            <div class="text-sm">
+              <p class="text-gray-700 font-medium">{{ user.phone }}</p>
+              <p class="text-gray-500">{{ getRoleLabel(user.role) }}</p>
+            </div>
+            <button
+              (click)="logout()"
+              class="px-4 py-2 text-sm font-medium text-red-600 hover:text-red-700"
+            >
+              Logout
+            </button>
+          }
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <router-outlet></router-outlet>
+  </main>
+</div>

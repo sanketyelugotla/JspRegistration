@@ -1,0 +1,251 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  MANDAL_OFFICER
+  DISTRICT_OFFICER
+  STATE_OFFICER
+  APPLICANT
+}
+
+enum ApplicationStatus {
+  DRAFT
+  SUBMITTED
+  MANDAL_REVIEW
+  DISTRICT_REVIEW
+  STATE_REVIEW
+  APPROVED
+  REJECTED
+  CORRECTION_REQUIRED
+}
+
+enum DocumentType {
+  BIO_DATA
+  SUPPORTING
+}
+
+enum ApprovalAction {
+  APPROVE
+  REJECT
+  REQUEST_CORRECTION
+}
+
+model User {
+  id                    String         @id @default(uuid())
+  phone                 String         @unique
+  password              String?
+  role                  UserRole       @default(APPLICANT)
+  assignedDistrictId    String?
+  assignedConstituencyId String?
+  assignedMandalId      String?
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+  
+  assignedDistrict      District?      @relation("AssignedDistrict", fields: [assignedDistrictId], references: [id])
+  assignedConstituency  Constituency?  @relation("AssignedConstituency", fields: [assignedConstituencyId], references: [id])
+  assignedMandal        Mandal?        @relation("AssignedMandal", fields: [assignedMandalId], references: [id])
+  
+  refreshTokens         RefreshToken[]
+  approvalHistory       ApprovalHistory[]
+  auditLogs             AuditLog[]
+  
+  @@index([phone])
+  @@index([role])
+}
+
+model OtpSession {
+  id         String   @id @default(uuid())
+  phone      String
+  otp        String
+  verified   Boolean  @default(false)
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  
+  @@index([phone])
+  @@index([expiresAt])
+}
+
+model RefreshToken {
+  id         String   @id @default(uuid())
+  userId     String
+  token      String   @unique
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([token])
+}
+
+model District {
+  id             String         @id @default(uuid())
+  name           String
+  createdAt      DateTime       @default(now())
+  
+  constituencies Constituency[]
+  applications   Application[]
+  assignedUsers  User[]         @relation("AssignedDistrict")
+  
+  @@index([name])
+}
+
+model Constituency {
+  id             String         @id @default(uuid())
+  name           String
+  districtId     String
+  createdAt      DateTime       @default(now())
+  
+  district       District       @relation(fields: [districtId], references: [id])
+  mandals        Mandal[]
+  applications   Application[]
+  assignedUsers  User[]         @relation("AssignedConstituency")
+  
+  @@index([districtId])
+  @@index([name])
+}
+
+model Mandal {
+  id              String         @id @default(uuid())
+  name            String
+  constituencyId  String
+  createdAt       DateTime       @default(now())
+  
+  constituency    Constituency   @relation(fields: [constituencyId], references: [id])
+  applications    Application[]
+  assignedUsers   User[]         @relation("AssignedMandal")
+  
+  @@index([constituencyId])
+  @@index([name])
+}
+
+model PartyRole {
+  id               String            @id @default(uuid())
+  name             String            @unique
+  active           Boolean           @default(true)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  
+  rolePreferences1 RolePreference[]  @relation("PreferredRole1")
+  rolePreferences2 RolePreference[]  @relation("PreferredRole2")
+  rolePreferences3 RolePreference[]  @relation("PreferredRole3")
+  
+  @@index([active])
+}
+
+model Application {
+  id                 String             @id @default(uuid())
+  applicantPhone     String
+  jspId              String
+  fullName           String
+  districtId         String
+  constituencyId     String
+  mandalId           String
+  villageWard        String
+  pollingBooth       String
+  shortDescription   String?            @db.Text
+  status             ApplicationStatus  @default(DRAFT)
+  currentLevel       String?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  
+  district           District           @relation(fields: [districtId], references: [id])
+  constituency       Constituency       @relation(fields: [constituencyId], references: [id])
+  mandal             Mandal             @relation(fields: [mandalId], references: [id])
+  
+  rolePreference     RolePreference?
+  documents          Document[]
+  approvalHistory    ApprovalHistory[]
+  auditLogs          AuditLog[]
+  
+  @@index([applicantPhone])
+  @@index([status])
+  @@index([mandalId])
+  @@index([constituencyId])
+  @@index([districtId])
+  @@index([createdAt])
+}
+
+model RolePreference {
+  id                  String       @id @default(uuid())
+  applicationId       String       @unique
+  preferredRole1Id    String?
+  preferredRole2Id    String?
+  preferredRole3Id    String?
+  flexibilityAgreed   Boolean      @default(false)
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+  
+  application         Application  @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  preferredRole1      PartyRole?   @relation("PreferredRole1", fields: [preferredRole1Id], references: [id])
+  preferredRole2      PartyRole?   @relation("PreferredRole2", fields: [preferredRole2Id], references: [id])
+  preferredRole3      PartyRole?   @relation("PreferredRole3", fields: [preferredRole3Id], references: [id])
+  
+  @@index([applicationId])
+}
+
+model Document {
+  id                 String       @id @default(uuid())
+  applicationId      String
+  documentType       DocumentType
+  originalFilename   String
+  generatedFilename  String       @unique
+  fileUrl            String?      // Cloudinary URL (optional, for cloud storage)
+  mimeType           String
+  fileSize           Int
+  uploadedAt         DateTime     @default(now())
+  
+  application        Application  @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  
+  @@index([applicationId])
+  @@index([documentType])
+}
+
+model ApprovalHistory {
+  id              String          @id @default(uuid())
+  applicationId   String
+  officerId       String
+  role            UserRole
+  action          ApprovalAction
+  remarks         String?         @db.Text
+  previousStatus  ApplicationStatus
+  newStatus       ApplicationStatus
+  ipAddress       String?
+  createdAt       DateTime        @default(now())
+  
+  application     Application     @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  officer         User            @relation(fields: [officerId], references: [id])
+  
+  @@index([applicationId])
+  @@index([officerId])
+  @@index([createdAt])
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  userId      String?
+  role        UserRole?
+  action      String
+  entityType  String
+  entityId    String?
+  ipAddress   String?
+  remarks     String?  @db.Text
+  timestamp   DateTime @default(now())
+  
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  application Application? @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([entityType])
+  @@index([timestamp])
+}

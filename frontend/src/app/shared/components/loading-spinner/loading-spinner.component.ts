@@ -1,0 +1,15 @@
+import { Component } from '@angular/core';
+import { CommonModule } from '@angular/common';
+
+@Component({
+    selector: 'app-loading-spinner',
+    standalone: true,
+    imports: [CommonModule],
+    templateUrl: './loading-spinner.component.html',
+    styles: [`
+    :host {
+      display: contents;
+    }
+  `]
+})
+export class LoadingSpinnerComponent { }
