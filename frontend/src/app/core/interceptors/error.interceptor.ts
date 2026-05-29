@@ -13,6 +13,8 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
     return next(req).pipe(
         catchError((error: HttpErrorResponse) => {
             let errorMessage = 'An error occurred';
+            const isBrowser = typeof window !== 'undefined';
+            const isClientError = typeof ErrorEvent !== 'undefined' && error.error instanceof ErrorEvent;
 
             console.error('🔴 HTTP Error occurred:', {
                 url: req.url,
@@ -22,7 +24,7 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
                 error: error.error
             });
 
-            if (error.error instanceof ErrorEvent) {
+            if (isClientError) {
                 // Client-side error
                 errorMessage = `Error: ${error.error.message}`;
             } else {
@@ -31,8 +33,10 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
 
                 // Handle 401 Unauthorized
                 if (error.status === 401) {
-                    authService.clearAuthData();
-                    router.navigate(['/auth/login']);
+                    if (isBrowser) {
+                        authService.clearAuthData();
+                        router.navigate(['/auth/login']);
+                    }
                     errorMessage = 'Session expired. Please login again.';
                 }
 

@@ -26,6 +26,12 @@ export class StateOfficerDashboardComponent implements OnInit {
     loading = signal(true);
     user = this.authService.user;
     private hasInitialized = false;
+    private refreshEffect = effect(() => {
+        this.dashboardRefreshService.refreshTick();
+        if (this.hasInitialized) {
+            this.loadApplications();
+        }
+    });
 
     stats = signal({
         total: 0,
@@ -41,13 +47,6 @@ export class StateOfficerDashboardComponent implements OnInit {
 
         this.route.queryParamMap.subscribe(() => {
             this.loadApplications();
-        });
-
-        effect(() => {
-            this.dashboardRefreshService.refreshTick();
-            if (this.hasInitialized) {
-                this.loadApplications();
-            }
         });
     }
 
