@@ -9,6 +9,8 @@ import { uploadToCloudinary } from '../utils/cloudinary.util';
 import { DocumentType } from '@prisma/client';
 import { createReadStream } from 'fs';
 import { env } from '../config/env.config';
+import cloudinary from '../config/cloudinary.config';
+import path from 'path';
 
 const router = Router();
 const documentService = new DocumentService();
@@ -100,28 +102,81 @@ async function streamDocumentResponse(
     res: Response,
     disposition: 'attachment' | 'inline'
 ): Promise<void> {
+    if (document.fileUrl) {
+        const arrayBuffer = await fetchCloudinaryDocumentBuffer(document);
+        const buffer = Buffer.from(arrayBuffer);
+
+        res.setHeader('Content-Type', document.mimeType);
+        res.setHeader(
+            'Content-Disposition',
+            `${disposition}; filename*=UTF-8''${encodeURIComponent(document.originalFilename)}`
+        );
+        res.setHeader('Content-Length', buffer.length.toString());
+        res.end(buffer);
+        return;
+    }
+
     res.setHeader('Content-Type', document.mimeType);
     res.setHeader(
         'Content-Disposition',
         `${disposition}; filename*=UTF-8''${encodeURIComponent(document.originalFilename)}`
     );
 
-    if (document.fileUrl) {
-        const upstreamResponse = await fetch(document.fileUrl);
-
-        if (!upstreamResponse.ok) {
-            throw new Error('Failed to fetch document from cloud storage');
+    const filePath = documentService.getFilePath(document.generatedFilename);
+    const fileStream = createReadStream(filePath);
+    fileStream.on('error', (error) => {
+        logger.error('Local document stream error:', error);
+        if (!res.headersSent) {
+            errorResponse(res, 'Failed to read local document file', 500);
+        } else {
+            res.end();
         }
+    });
+    fileStream.pipe(res);
+}
 
-        const arrayBuffer = await upstreamResponse.arrayBuffer();
-        const buffer = Buffer.from(arrayBuffer);
-        res.setHeader('Content-Length', buffer.length.toString());
-        res.end(buffer);
-        return;
+async function fetchCloudinaryDocumentBuffer(
+    document: Awaited<ReturnType<DocumentService['getDocumentById']>>
+): Promise<ArrayBuffer> {
+    const directResponse = await fetch(document.fileUrl!);
+
+    if (directResponse.ok) {
+        return directResponse.arrayBuffer();
     }
 
-    const filePath = documentService.getFilePath(document.generatedFilename);
-    createReadStream(filePath).pipe(res);
+    const extension = getFileExtension(document.originalFilename, document.mimeType);
+    const signedUrl = cloudinary.utils.private_download_url(document.generatedFilename, extension, {
+        resource_type: 'image',
+        type: 'upload',
+        expires_at: Math.floor(Date.now() / 1000) + 120,
+        attachment: false,
+    });
+
+    const signedResponse = await fetch(signedUrl);
+    if (!signedResponse.ok) {
+        throw new Error('Failed to fetch document from cloud storage');
+    }
+
+    return signedResponse.arrayBuffer();
+}
+
+function getFileExtension(filename: string, mimeType: string): string {
+    const ext = path.extname(filename).replace('.', '').toLowerCase();
+    if (ext) {
+        return ext;
+    }
+
+    if (mimeType === 'application/pdf') {
+        return 'pdf';
+    }
+    if (mimeType === 'image/png') {
+        return 'png';
+    }
+    if (mimeType === 'image/jpeg' || mimeType === 'image/jpg') {
+        return 'jpg';
+    }
+
+    return 'pdf';
 }
 
 export default router;
